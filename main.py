@@ -27,7 +27,7 @@ app = FastAPI(
 
 DB_NAME = "tasks.db"
 
-conn = sqlite3.connect(DB_NAME)
+conn = sqlite3.connect(DB_NAME, check_same_thread=False)
 
 conn.execute("""
     CREATE TABLE IF NOT EXISTS tasks (
@@ -121,20 +121,40 @@ def delete_task(id: int):
         detail=f"Task {id} not found"
     )
 
-@app.get("/tasks", summary="Get all tasks")
+@app.get("/tasks")
 def get_tasks():
-    return tasks
+    cursor = conn.execute("SELECT * FROM tasks")
+    rows = cursor.fetchall()
 
-@app.get("/tasks/{id}", summary="Get a task by ID")
+    return [
+        {
+            "id": row[0],
+            "title": row[1],
+            "done": bool(row[2])
+        }
+        for row in rows
+    ]
+
+@app.get("/tasks/{id}")
 def get_task(id: int):
-    for task in tasks:
-        if task["id"] == id:
-            return task
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Task {id} not found"
+    cursor = conn.execute(
+        "SELECT * FROM tasks WHERE id = ?",
+        (id,)
     )
+
+    row = cursor.fetchone()
+
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    return {
+        "id": row[0],
+        "title": row[1],
+        "done": bool(row[2])
+    }
 
 
 
