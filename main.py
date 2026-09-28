@@ -1,3 +1,5 @@
+import sqlite3
+
 tasks = [
     {"id": 1, "title": "Learn FastAPI", "done": False},
     {"id": 2, "title": "Build CRUD API", "done": False},
@@ -22,6 +24,34 @@ app = FastAPI(
     description="A simple CRUD API built using FastAPI.",
     version="1.0"
 )
+
+DB_NAME = "tasks.db"
+
+conn = sqlite3.connect(DB_NAME)
+
+conn.execute("""
+    CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0
+    )
+""")
+
+conn.commit()
+
+cursor = conn.execute("SELECT COUNT(*) FROM tasks")
+count = cursor.fetchone()[0]
+
+if count == 0:
+    conn.executemany(
+        "INSERT INTO tasks (title, done) VALUES (?, ?)",
+        [
+            ("Learn FastAPI", 0),
+            ("Build CRUD API", 0),
+            ("Test API", 1),
+        ]
+    )
+    conn.commit()
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
