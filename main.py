@@ -91,38 +91,62 @@ def update_task(id: int, task_update: TaskUpdate):
             detail="At least one field must be provided"
         )
 
-    for task in tasks:
-        if task["id"] == id:
-
-            if task_update.title is not None:
-                if not task_update.title.strip():
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Title cannot be empty"
-                    )
-                task["title"] = task_update.title
-
-            if task_update.done is not None:
-                task["done"] = task_update.done
-
-            return task
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Task {id} not found"
+    cursor = conn.execute(
+        "SELECT * FROM tasks WHERE id = ?",
+        (id,)
     )
+    row = cursor.fetchone()
+
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    current_title = row[1]
+    current_done = bool(row[2])
+
+    new_title = current_title
+    new_done = current_done
+
+    if task_update.title is not None:
+        if not task_update.title.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Title cannot be empty"
+            )
+        new_title = task_update.title
+
+    if task_update.done is not None:
+        new_done = task_update.done
+
+    conn.execute(
+        "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+        (new_title, int(new_done), id)
+    )
+
+    conn.commit()
+
+    return {
+        "id": id,
+        "title": new_title,
+        "done": new_done
+    }
 
 @app.delete("/tasks/{id}", status_code=204)
 def delete_task(id: int):
-    for index, task in enumerate(tasks):
-        if task["id"] == id:
-            tasks.pop(index)
-            return
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Task {id} not found"
+    cursor = conn.execute(
+        "DELETE FROM tasks WHERE id = ?",
+        (id,)
     )
+
+    if cursor.rowcount == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    conn.commit()
 
 @app.get("/tasks")
 def get_tasks():
