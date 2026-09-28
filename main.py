@@ -68,17 +68,20 @@ def create_task(task: TaskCreate):
             detail="Title cannot be empty"
         )
 
-    new_id = max(task["id"] for task in tasks) + 1
+    cursor = conn.execute(
+        "INSERT INTO tasks (title, done) VALUES (?, ?)",
+        (task.title, int(task.done))
+    )
 
-    new_task = {
+    conn.commit()
+
+    new_id = cursor.lastrowid
+
+    return {
         "id": new_id,
         "title": task.title,
         "done": task.done
     }
-
-    tasks.append(new_task)
-
-    return new_task
 
 @app.put("/tasks/{id}")
 def update_task(id: int, task_update: TaskUpdate):
