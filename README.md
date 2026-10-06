@@ -94,6 +94,8 @@ You can use Swagger UI to test all API endpoints directly from your browser.
 
 ## Data Storage
 
+SQLite was chosen for persistent storage because it is lightweight, requires no separate database server, and is well suited for this small CRUD application.
+
 Tasks are stored in a SQLite database named `tasks.db`.
 
 The database and `tasks` table are created automatically when the application starts if they do not already exist.
@@ -108,7 +110,7 @@ The database uses the following structure:
 | `title` | TEXT | Task title |
 | `done` | INTEGER | Completion status (`0` = false, `1` = true) |
 
-The `tasks.db` file is excluded from version control through `.gitignore`. This allows each installation to create its own local database.
+The `tasks.db` file is excluded from version control through `.gitignore`.
 
 Data persists across API restarts because tasks are stored in SQLite rather than an in-memory Python list.
 
