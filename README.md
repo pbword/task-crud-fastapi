@@ -1,6 +1,6 @@
 # Task API
 
-A simple CRUD API for managing a to-do list, built with Python and FastAPI.
+A simple CRUD API for managing a to-do list, built with Python, FastAPI and SQLite.
 
 ## Features
 
@@ -120,7 +120,6 @@ The database was inspected and modified manually using DB Browser for SQLite.
 
 ### Example SQL Query
 
-The following query was executed in DB Browser during Stage 4:
 
     SELECT * FROM tasks WHERE id = 2;
 
