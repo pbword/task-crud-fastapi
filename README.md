@@ -296,6 +296,7 @@ content-length: 57
 content-type: application/json
 
 {"id":6,"title":"Test PostgreSQL with curl","done":false}
+```
 
 ## Database Persistence
 
