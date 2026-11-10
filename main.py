@@ -11,7 +11,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from database import init_db
+from database import init_db, DATABASE_URL
+import psycopg
 
 class TaskCreate(BaseModel):
     title: str
@@ -158,38 +159,40 @@ def delete_task(id: int):
 
 @app.get("/tasks")
 def get_tasks():
-    cursor = conn.execute("SELECT * FROM tasks")
-    rows = cursor.fetchall()
+    with psycopg.connect(DATABASE_URL) as conn:
+        cursor = conn.execute("SELECT * FROM tasks")
+        rows = cursor.fetchall()
 
-    return [
-        {
-            "id": row[0],
-            "title": row[1],
-            "done": bool(row[2])
-        }
-        for row in rows
-    ]
+        return [
+            {
+                "id": row[0],
+                "title": row[1],
+                "done": row[2]
+            }
+            for row in rows
+        ]
 
 @app.get("/tasks/{id}")
 def get_task(id: int):
-    cursor = conn.execute(
-        "SELECT * FROM tasks WHERE id = ?",
-        (id,)
-    )
-
-    row = cursor.fetchone()
-
-    if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Task not found"
+    with psycopg.connect(DATABASE_URL) as conn:
+        cursor = conn.execute(
+            "SELECT * FROM tasks WHERE id = %s",
+            (id,)
         )
 
-    return {
-        "id": row[0],
-        "title": row[1],
-        "done": bool(row[2])
-    }
+        row = cursor.fetchone()
+
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Task not found"
+            )
+
+        return {
+            "id": row[0],
+            "title": row[1],
+            "done": row[2]
+        }
 
 
 
