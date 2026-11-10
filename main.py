@@ -10,6 +10,8 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
+from database import init_db
 
 class TaskCreate(BaseModel):
     title: str
@@ -19,7 +21,13 @@ class TaskUpdate(BaseModel):
     title: str | None = None
     done: bool | None = None
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Task API",
     description="A simple CRUD API built using FastAPI.",
     version="1.0"
