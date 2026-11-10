@@ -295,10 +295,7 @@ server: uvicorn
 content-length: 57
 content-type: application/json
 
-{"id":6,"title":"Test PostgreSQL with curl","done":false}(.venv)
-```
-
-*Illustrative response. The generated task ID depends on existing database records.*
+{"id":6,"title":"Test PostgreSQL with curl","done":false}
 
 ## Database Persistence
 
