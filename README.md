@@ -1,6 +1,6 @@
 # Task API
 
-A simple CRUD API for managing a to-do list, built with Python, FastAPI and SQLite.
+A CRUD REST API for managing a to-do list, built with Python, FastAPI, PostgreSQL, and Docker Compose.
 
 ## Features
 
@@ -9,13 +9,16 @@ A simple CRUD API for managing a to-do list, built with Python, FastAPI and SQLi
 - Retrieve a task by ID
 - Update tasks
 - Delete tasks
-- SQLite database persistence
+- PostgreSQL database persistence
 - Automatic database and table creation
 - Automatic seeding of initial tasks
+- Parameterized SQL queries
 - Input validation
 - Health check endpoint
 - Correct HTTP status codes for all operations
 - Interactive API documentation with Swagger UI
+- Dockerized API and database
+- Persistent storage using Docker volumes
 
 ## Tech Stack
 
@@ -23,42 +26,119 @@ A simple CRUD API for managing a to-do list, built with Python, FastAPI and SQLi
 - FastAPI
 - Uvicorn
 - Pydantic
-- SQLite
+- PostgreSQL 18
+- Psycopg 3
+- Docker
+- Docker Compose
 
 ## Setup
 
 ### 1. Clone the repository
 
-    git clone https://github.com/pbword/task-crud-fastapi
-    cd task-crud-fastapi
+```bash
+git clone https://github.com/pbword/task-crud-fastapi.git
+cd task-crud-fastapi
+```
 
-### 2. Create a virtual environment
+### 2. Configure environment variables
 
-    python3 -m venv .venv
+Create a `.env` file in the project root, or copy the provided example:
 
-### 3. Activate the virtual environment
+```bash
+cp .env.example .env
+```
 
-Linux/macOS:
+Configure the following variables:
 
-    source .venv/bin/activate
+```env
+DATABASE_URL=postgresql://postgres:dev@localhost:5432/tasks
+POSTGRES_PASSWORD=dev
+```
 
-Windows:
+The password `dev` is intended for local development only.
 
-    .venv\Scripts\activate
+When running through Docker Compose, the API connects to PostgreSQL using the internal hostname `db` instead of `localhost`.
 
-### 4. Install dependencies
+### 3. Start the application using Docker Compose
 
-    pip install -r requirements.txt
+Make sure Docker Engine is running, then execute:
 
-## Run the API
+```bash
+docker compose up --build
+```
 
-Start the development server with:
+Docker Compose automatically:
 
-    python -m uvicorn main:app --reload
+- Builds the FastAPI application image
+- Starts the PostgreSQL container
+- Waits for PostgreSQL to become healthy
+- Starts the FastAPI application
+- Initializes the database table and seeds initial tasks if the table is empty
 
 The API will be available at:
 
-    http://localhost:8000
+http://localhost:8000
+
+### 4. Stop the application
+
+```bash
+docker compose down
+```
+
+The PostgreSQL database persists through a Docker named volume, so existing tasks remain available when the containers are restarted.
+
+**Note:** Running `docker compose down -v` also removes the database volume and its stored data.
+
+## Run Locally (Without Dockerizing the API)
+
+You can also run FastAPI directly using Python, provided PostgreSQL is already running and accessible.
+
+### 1. Create a virtual environment
+
+```bash
+python3 -m venv .venv
+```
+
+### 2. Activate the virtual environment
+
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows:
+
+```powershell
+.venv\Scripts\activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Start the development server
+
+```bash
+python -m uvicorn main:app --reload
+```
+
+The API will be available at:
+
+http://localhost:8000
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string used by FastAPI |
+| `POSTGRES_PASSWORD` | Password for the PostgreSQL database |
+
+The `.env` file is excluded from version control using `.gitignore`. An `.env.example` file is provided as a configuration reference.
+
+Docker Compose overrides `DATABASE_URL` inside the API container to connect to the `db` service.
 
 ## API Documentation
 
@@ -66,7 +146,7 @@ FastAPI automatically generates interactive Swagger UI documentation.
 
 Open:
 
-    http://localhost:8000/docs
+http://localhost:8000/docs
 
 You can use Swagger UI to test all API endpoints directly from your browser.
 
@@ -74,58 +154,81 @@ You can use Swagger UI to test all API endpoints directly from your browser.
 
 ## Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Get API information |
-| GET | `/health` | Health check |
-| GET | `/tasks` | Get all tasks |
-| GET | `/tasks/{id}` | Get a task by ID |
-| POST | `/tasks` | Create a new task |
-| PUT | `/tasks/{id}` | Update an existing task |
-| DELETE | `/tasks/{id}` | Delete an existing task |
+| Method | Endpoint | Description | Success Status |
+|---|---|---|---|
+| GET | `/` | Get API information | 200 |
+| GET | `/health` | Health check | 200 |
+| GET | `/tasks` | Get all tasks | 200 |
+| GET | `/tasks/{id}` | Get a task by ID | 200 |
+| POST | `/tasks` | Create a new task | 201 |
+| PUT | `/tasks/{id}` | Update an existing task | 200 |
+| DELETE | `/tasks/{id}` | Delete an existing task | 204 |
+
+The API also returns appropriate error responses, including `400 Bad Request`, `404 Not Found`, and validation errors.
 
 ## Example Task
 
-    {
-      "id": 1,
-      "title": "Learn FastAPI",
-      "done": false
-    }
+```json
+{
+  "id": 1,
+  "title": "Learn FastAPI",
+  "done": false
+}
+```
 
 ## Data Storage
 
-SQLite was chosen for persistent storage because it is lightweight, requires no separate database server, and is well suited for this small CRUD application.
+PostgreSQL is used to provide persistent relational storage for the application.
 
-Tasks are stored in a SQLite database named `tasks.db`.
+Unlike the previous SQLite implementation, PostgreSQL runs as a separate database service managed through Docker Compose.
 
 The database and `tasks` table are created automatically when the application starts if they do not already exist.
 
-If the database is empty, three initial tasks are automatically inserted.
+If the table is empty, three initial tasks are automatically inserted.
 
 The database uses the following structure:
 
 | Column | Type | Description |
-|--------|------|-------------|
-| `id` | INTEGER | Primary key with auto-increment |
-| `title` | TEXT | Task title |
-| `done` | INTEGER | Completion status (`0` = false, `1` = true) |
+|---|---|---|
+| `id` | SERIAL | Auto-incrementing primary key |
+| `title` | TEXT | Task title, cannot be NULL |
+| `done` | BOOLEAN | Completion status, defaults to FALSE |
 
-The `tasks.db` file is excluded from version control through `.gitignore`.
+Database operations use Psycopg 3 with parameterized SQL queries.
 
-Data persists across API restarts because tasks are stored in SQLite rather than an in-memory Python list.
+PostgreSQL stores its data in a Docker named volume (`taskdata`), ensuring that records persist across container restarts.
 
-## SQLite Database
+## PostgreSQL Database
 
-The database was inspected and modified manually using DB Browser for SQLite.
+The database can be inspected directly using PostgreSQL's `psql` command-line client.
 
-![SQLite Database in DB Browser](database-browser.png)
+Connect to the PostgreSQL container:
 
-### Example SQL Query
+```bash
+docker compose exec db psql -U postgres -d tasks
+```
 
+Display the available tables:
 
-    SELECT * FROM tasks WHERE id = 2;
+```sql
+\dt
+```
 
-The query retrieves the task with ID `2` from the SQLite database.
+Retrieve all tasks:
+
+```sql
+SELECT * FROM tasks;
+```
+
+Retrieve a specific task:
+
+```sql
+SELECT * FROM tasks WHERE id = 2;
+```
+
+The screenshot below shows the PostgreSQL database and stored task records.
+
+![PostgreSQL Database](postgres-database.png)
 
 ## Testing
 
@@ -135,43 +238,77 @@ The API can be tested using Swagger UI or directly from the command line with `c
 
 Open:
 
-    http://localhost:8000/docs
+http://localhost:8000/docs
 
 ### curl
 
 Get all tasks:
 
-    curl -i http://localhost:8000/tasks
+```bash
+curl -i http://localhost:8000/tasks
+```
 
 Get a task by ID:
 
-    curl -i http://localhost:8000/tasks/1
+```bash
+curl -i http://localhost:8000/tasks/1
+```
 
 Create a task:
 
-    curl -i -X POST http://localhost:8000/tasks \
-      -H "Content-Type: application/json" \
-      -d '{"title": "Learn FastAPI"}'
+```bash
+curl -i -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Learn FastAPI"}'
+```
 
 Update a task:
 
-    curl -i -X PUT http://localhost:8000/tasks/1 \
-      -H "Content-Type: application/json" \
-      -d '{"done": true}'
+```bash
+curl -i -X PUT http://localhost:8000/tasks/1 \
+  -H "Content-Type: application/json" \
+  -d '{"done": true}'
+```
 
 Delete a task:
 
-    curl -i -X DELETE http://localhost:8000/tasks/1
+```bash
+curl -i -X DELETE http://localhost:8000/tasks/1
+```
 
 ### Example Request
 
-    curl -i -X POST http://localhost:8000/tasks \
-      -H "Content-Type: application/json" \
-      -d '{"title":"Test CRUD with curl"}'
+```bash
+curl -i -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Test PostgreSQL with curl"}'
+```
 
 ### Example Response
 
-    HTTP/1.1 201 Created
-    content-type: application/json
+A successful request returns `201 Created` with a JSON response containing the newly created task.
 
-    {"id":4,"title":"Test CRUD with curl","done":false}
+```http
+HTTP/1.1 201 Created
+date: Tue, 10 Nov 2026 15:44:27 GMT
+server: uvicorn
+content-length: 57
+content-type: application/json
+
+{"id":6,"title":"Test PostgreSQL with curl","done":false}(.venv)
+```
+
+*Illustrative response. The generated task ID depends on existing database records.*
+
+## Database Persistence
+
+PostgreSQL data is stored in a persistent Docker volume.
+
+To verify persistence:
+
+1. Create a new task using the API.
+2. Stop the containers using `docker compose down`.
+3. Restart them using `docker compose up`.
+4. Retrieve the tasks using `GET /tasks`.
+
+The newly created task should still be present after restarting the containers.
